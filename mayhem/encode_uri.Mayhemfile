@@ -1,0 +1,5 @@
+project: dufs
+target: encode_uri
+
+cmds:
+  - cmd: /encode_uri

@@ -8,7 +8,7 @@ mod streamer;
 mod tls;
 #[cfg(unix)]
 mod unix;
-mod utils;
+pub mod utils;
 
 #[macro_use]
 extern crate log;
