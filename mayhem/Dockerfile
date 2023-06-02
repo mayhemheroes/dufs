@@ -11,6 +11,7 @@ RUN cargo install -f cargo-fuzz
 ADD . /dufs
 WORKDIR /dufs
 
+RUN mv inject/lib.rs src/lib.rs
 RUN cd ./fuzz && cargo +nightly fuzz build
 
 # Move Fuzzers to a clean image
