@@ -1,0 +1,29 @@
+[package]
+name = "dufs-fuzz"
+version = "0.0.0"
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+dufs = { path = ".." }
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "encode_uri"
+path = "fuzz_targets/encode_uri.rs"
+
+
+[[bin]]
+name = "decode_uri"
+path = "fuzz_targets/decode_uri.rs"
+
+
+[[bin]]
+name = "glob"
+path = "fuzz_targets/glob.rs"

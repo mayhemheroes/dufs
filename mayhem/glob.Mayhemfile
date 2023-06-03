@@ -1,0 +1,5 @@
+project: dufs
+target: glob
+
+cmds:
+  - cmd: /glob

@@ -1,0 +1,5 @@
+project: dufs
+target: decode_uri
+
+cmds:
+  - cmd: /decode_uri
