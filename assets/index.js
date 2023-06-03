@@ -22,6 +22,8 @@
  * @property {string} editable
  */
 
+var DUFS_MAX_UPLOADINGS = 1;
+
 /**
  * @type {DATA} DATA
  */
@@ -152,7 +154,6 @@ class Uploader {
   }
 
   ajax() {
-    Uploader.runnings += 1;
     const url = newUrl(this.name);
     this.lastUptime = Date.now();
     const ajax = new XMLHttpRequest();
@@ -187,13 +188,13 @@ class Uploader {
 
   complete() {
     this.$uploadStatus.innerHTML = `✓`;
-    Uploader.runnings -= 1;
+    Uploader.runnings--;
     Uploader.runQueue();
   }
 
   fail() {
     this.$uploadStatus.innerHTML = `✗`;
-    Uploader.runnings -= 1;
+    Uploader.runnings--;
     Uploader.runQueue();
   }
 }
@@ -211,13 +212,14 @@ Uploader.queues = [];
 
 
 Uploader.runQueue = async () => {
-  if (Uploader.runnings > 2) return;
+  if (Uploader.runnings >= DUFS_MAX_UPLOADINGS) return;
+  if (Uploader.queues.length == 0) return;
+  Uploader.runnings++;
   let uploader = Uploader.queues.shift();
-  if (!uploader) return;
   if (!Uploader.auth) {
     Uploader.auth = true;
     try {
-      await login();
+      await checkAuth()
     } catch {
       Uploader.auth = false;
     }
@@ -379,9 +381,8 @@ function addPath(file, index) {
   }
   if (DATA.allow_delete) {
     if (DATA.allow_upload) {
-      if (isDir) {
-        actionMove = `<div onclick="movePath(${index})" class="action-btn" id="moveBtn${index}" title="Move to new path">${ICONS.move}</div>`;
-      } else {
+      actionMove = `<div onclick="movePath(${index})" class="action-btn" id="moveBtn${index}" title="Move to new path">${ICONS.move}</div>`;
+      if (!isDir) {
         actionEdit = `<a class="action-btn" title="Edit file" target="_blank" href="${url}?edit">${ICONS.edit}</a>`;
       }
     }
@@ -392,8 +393,8 @@ function addPath(file, index) {
   <td class="cell-actions">
     ${actionDownload}
     ${actionMove}
-    ${actionEdit}
     ${actionDelete}
+    ${actionEdit}
   </td>`
 
   $pathsTableBody.insertAdjacentHTML("beforeend", `
@@ -441,7 +442,14 @@ function setupAuth() {
   } else {
     const $loginBtn = document.querySelector(".login-btn");
     $loginBtn.classList.remove("hidden");
-    $loginBtn.addEventListener("click", () => login(true));
+    $loginBtn.addEventListener("click", async () => {
+      try {
+        await checkAuth()
+        location.reload();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
   }
 }
 
@@ -575,7 +583,7 @@ async function deletePath(index) {
 async function doDeletePath(name, url, cb) {
   if (!confirm(`Delete \`${name}\`?`)) return;
   try {
-    await login();
+    await checkAuth();
     const res = await fetch(url, {
       method: "DELETE",
     });
@@ -615,7 +623,7 @@ async function doMovePath(fileUrl) {
   const newFileUrl = fileUrlObj.origin + prefix + newPath.split("/").map(encodeURIComponent).join("/");
 
   try {
-    await login();
+    await checkAuth();
     const res1 = await fetch(newFileUrl, {
       method: "HEAD",
     });
@@ -653,24 +661,15 @@ async function saveChange() {
   }
 }
 
-async function login(alert = false) {
+async function checkAuth() {
   if (!DATA.auth) return;
-  try {
-    const res = await fetch(baseUrl(), {
-      method: "WRITEABLE",
-    });
-    await assertResOK(res);
-    document.querySelector(".login-btn").classList.add("hidden");
-    $userBtn.classList.remove("hidden");
-    $userBtn.title = "";
-  } catch (err) {
-    let message = `Cannot login, ${err.message}`;
-    if (alert) {
-      alert(message);
-    } else {
-      throw new Error(message);
-    }
-  }
+  const res = await fetch(baseUrl(), {
+    method: "WRITEABLE",
+  });
+  await assertResOK(res);
+  document.querySelector(".login-btn").classList.add("hidden");
+  $userBtn.classList.remove("hidden");
+  $userBtn.title = "";
 }
 
 /**
@@ -680,7 +679,7 @@ async function login(alert = false) {
 async function createFolder(name) {
   const url = newUrl(name);
   try {
-    await login();
+    await checkAuth();
     const res = await fetch(url, {
       method: "MKCOL",
     });
@@ -694,7 +693,7 @@ async function createFolder(name) {
 async function createFile(name) {
   const url = newUrl(name);
   try {
-    await login();
+    await checkAuth();
     const res = await fetch(url, {
       method: "PUT",
       body: "",
@@ -809,7 +808,7 @@ function encodedStr(rawStr) {
 
 async function assertResOK(res) {
   if (!(res.status >= 200 && res.status < 300)) {
-    throw new Error(await res.text())
+    throw new Error(await res.text() || `Invalid status ${res.status}`);
   }
 }
 
